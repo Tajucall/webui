@@ -1,0 +1,35 @@
+    DATA: lr_partner   TYPE REF TO cl_crm_bol_entity,
+          lr_btadminh  TYPE REF TO cl_crm_bol_entity,
+          lr_cuco      TYPE REF TO cl_iccmp_bt_cucopartner_impl,
+          lr_status    TYPE REF TO cl_crm_bol_entity,
+          lr_statusset TYPE REF TO cl_crm_bol_entity,
+          lv_status    TYPE crm_j_status.
+
+    lr_cuco ?= get_custom_controller( 'ICCMP_BTPARTNER/CuCoPartner' ). "#EC NOTEXT
+
+    TRY .
+        " delete Zuständiger Mitarbeiter
+        IF lr_cuco->typed_context->btpartner->collection_wrapper IS BOUND.
+
+          lr_partner ?= lr_cuco->typed_context->btpartner->collection_wrapper->get_first( ).
+
+          WHILE lr_partner IS BOUND.
+
+            DATA(lv_prt_fct) = lr_partner->get_property_as_string( 'PARTNER_FCT' ).
+            DATA(lv_partner) = lr_partner->get_property_as_string( 'PARTNER_NO' ).
+            IF lv_prt_fct = '00000022'. " Zuständiger Mitarbeiter
+
+              IF lv_partner IS NOT INITIAL AND lr_partner->is_changeable( ) EQ abap_true.
+                lr_partner->delete( ).
+                cl_crm_bol_core=>get_instance( )->modify( ).
+              ENDIF.
+
+            ENDIF.
+
+            lr_partner ?= lr_cuco->typed_context->btpartner->collection_wrapper->get_next( ).
+          ENDWHILE.
+
+        ENDIF.
+
+        " change status to Offen
+        lr_btadminh ?= me->typed_context->btadminh->collection_wrapper->get_current( ).
